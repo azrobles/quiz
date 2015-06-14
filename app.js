@@ -40,6 +40,29 @@ app.use(function(req, res, next) {
   next();
 });
 
+// MW de auto-logout
+app.use(function(req, res, next) {
+  app.locals.date = new Date();
+
+  if(req.session.user) {
+    // Guardar hora del reloj del sistema en variable de sesión
+    req.session.user.oldTime = req.session.user.time || app.locals.date.getTime();
+    req.session.user.time = app.locals.date.getTime();
+ 
+    // Comprobar si han transcurrido más de 2 minutos desde última transacción
+    if((req.session.user.time - req.session.user.oldTime) > 120000) {
+      // Destruir sesión por inactividad
+      delete req.session.user; 
+
+      // Volver a autenticarse para continuar
+      req.session.errors = [{"message": 'La sesión ha caducado por inactividad. Por favor, vuelva a autenticarse.'}];
+      res.redirect("/login");
+
+      return;
+    } else { next(); }
+  } else { next(); }
+});
+
 app.use('/', routes);
 
 // catch 404 and forward to error handler
